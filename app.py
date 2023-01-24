@@ -107,14 +107,14 @@ def predict():
     return jsonify({ 'SK_ID_CURR': customer_id,
                      'prediction': prediction})
     
-# find 50 nearest neighbors among the training set
+# find 20 nearest neighbors among the training set
 def get_df_neigh(selected_id_customer):
     # fit nearest neighbors among the selection
-    NN = NearestNeighbors(n_neighbors=50)
+    NN = NearestNeighbors(n_neighbors=20)
     NN.fit(X_train)  # X_train_NN
     X_cust = X.loc[selected_id_customer: selected_id_customer]  # X_test
     idx = NN.kneighbors(X=X_cust,
-                        n_neighbors=50,
+                        n_neighbors=20,
                         return_distance=False).ravel()
     nearest_cust_idx = list(X_train.iloc[idx].index)
     # data and target of neighbors
@@ -138,6 +138,42 @@ def neigh_cust():
                     'y_neigh':  y_neigh_json,
                     'data_neigh': data_neigh_json},  # 'x_cust': x_cust_json},
                    )
+
+# find 10000 nearest neighbors among the training set
+def get_df_thousand_neigh(selected_id_customer):
+    # fit nearest neighbors among the selection
+    thousand_nn = NearestNeighbors(n_neighbors=500)  # len(X_train)
+    thousand_nn.fit(X_train)  # X_train_NN
+    X_cust = X.loc[selected_id_customer: selected_id_customer]   # X_test
+    idx = thousand_nn.kneighbors(X=X_cust,
+                                 n_neighbors=500,  # len(X_train)
+                                 return_distance=False).ravel()
+    nearest_cust_idx = list(X_train.iloc[idx].index)
+    # data and target of neighbors
+    # ----------------------------
+    x_thousand_neigh = X_train.loc[nearest_cust_idx, :]
+    y_thousand_neigh = y_train.loc[nearest_cust_idx]
+    return x_thousand_neigh, y_thousand_neigh, X_cust
+
+
+@app.route('/app/thousand_neigh/')  # ==> ok
+# get shap values of the customer and 20 nearest neighbors
+# Test local : http://127.0.0.1:5000/app/thousand_neigh/?SK_ID_CURR=165690
+def thous_neigh():
+    # Parse http request to get arguments (sk_id_cust)
+    selected_id_customer = int(request.args.get('SK_ID_CURR'))
+    # return the nearest neighbors
+    x_thousand_neigh, y_thousand_neigh, x_customer = get_df_thousand_neigh(selected_id_customer)
+    # Converting the pd.Series to JSON
+    x_thousand_neigh_json = json.loads(x_thousand_neigh.to_json())
+    y_thousand_neigh_json = json.loads(y_thousand_neigh.to_json())
+    x_customer_json = json.loads(x_customer.to_json())
+    # Returning the processed data
+    return jsonify({'status': 'ok',
+                    'X_thousand_neigh': x_thousand_neigh_json,
+                    'x_custom': x_customer_json,
+                    'y_thousand_neigh': y_thousand_neigh_json})
+
 
 @app.route('/app/shap_val/')  # ==> ok
 # get shap values of the customer and 20 nearest neighbors
